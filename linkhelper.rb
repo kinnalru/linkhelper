@@ -45,8 +45,11 @@ cmd = "./#{action}.rb '#{query}'"
 
 pid = fork {
 	exec(cmd)
-	exit(0)
+
 }
 
+sleep 1
+rc = Process.waitpid(pid, Process::WNOHANG)
+exit rc if rc
 pp Process.detach(pid)
 exit 0

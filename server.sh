@@ -15,8 +15,7 @@ while true ; do
     QUERY=`echo $REQ | cut -d " " -f 2`
 
 	CODE="200 OK"
-	#RESP=`./linkhelper.rb "${QUERY}" 2>&1`
-	./linkhelper.rb "${QUERY}" 2>&1
+	RESP=`./linkhelper.rb "${QUERY}" 2>&1`
 
 	if [[ $? -ne 0 ]]; then CODE="404 Error"; fi
 	echo -e $RESP
