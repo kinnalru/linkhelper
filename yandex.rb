@@ -2,57 +2,71 @@
 
 require 'uri'
 require 'cgi'
-require 'pp'
+require 'common'
+
+$curpid="#{ENV["RUNNING"]}.#{$$}"
+File.rename(ENV["RUNNING"], $curpid)
 
 ENV["LANG"]="C"
 ENV["LC_ALL"]="C"
 
-def die(text)
-	puts text
-	exit(1)
-	return false
-end
+begin
+	$stdout = File.open(ENV["LOG"], 'a') if ENV["LOG"]
+	$stdout.sync = true
 
-query =ARGV[0]
-pp "Query:#{query}"
+	$stderr = File.open(ENV["LOG"], 'a') if ENV["LOG"]
+	$stderr.sync = true
 
-params = CGI::parse(query)
-params.include?('target') || die("Target key required ./yandex.rb target=http://file.txt")
+	query =ARGV[0]
+	log "Query:#{query}"
 
-target=params['target'].join
-cd = params.include?('cd') ? params['cd'].join : "/tmp/down"
-path = params.include?('path') ? params['path'].join : ""
+	params = CGI::parse(query)
+	params.include?('target') || die("Target key required ./yandex.rb target=http://file.txt")
 
-pp "Target:#{target}"
-pp "Cd:#{cd}"
-pp "Path:#{path}"
+	target=params['target'].join
+	cd = params.include?('cd') ? params['cd'].join : "/tmp/down"
+	path = params.include?('path') ? params['path'].join : ""
 
-`mkdir -p #{cd}`
-Dir.chdir(cd) || dir("Can't create/chdir folder #{cd}")
+	log "Target:#{target}"
+	log "Cd:#{cd}"
+	log "Path:#{path}"
 
-cmd = "wget #{target} 2>&1"
-pp "Command:#{cmd}"
-out = []
-IO.popen(cmd, "r+") do |pipe|
-	while true do
-		line = pipe.gets
-		break if !line
-		puts line
-		out << line
+	puts system("mkdir -p #{cd}")
+	Dir.chdir(cd) || dir("Can't create/chdir folder #{cd}")
+
+	cmd = "wget #{target} 2>&1"
+	log "Run:#{cmd}"
+	out = []
+	IO.popen(cmd, "r+") do |pipe|
+		while true do
+			line = pipe.gets
+			break if !line
+			puts line
+			out << line
+		end
 	end
-end
 
-result = $?
-if (result.success?) 
-	match = /«(.*)»/.match(out.grep(/saved/).join)
-	match = /'(.*)'/.match(out.grep(/saved/).join) if !match
-	file = match[1]
-	file || die("Can't obtain result file: #{output}")
-	cmd = "curl https://webdav.yandex.ru/#{path}/ -u USER:PASSWD -X PUT -T #{file}"
-	pp cmd
-	system(cmd) ? exit(0) : exit(1)
-else
-	die("Can't execute command: #{cmd}")
-end
+	result = $?
+	if (result.success?) 
+		match = /«(.*)»/.match(out.grep(/saved/).join)
+		match = /'(.*)'/.match(out.grep(/saved/).join) if !match
+		file = match[1]
+		file || die("Can't obtain result file: #{output}")
+		cmd = "curl https://webdav.yandex.ru/#{path}/ -u USER:PASSWD -X PUT -T #{file}"
+		log "Run:#{cmd}"
+		if system(cmd)
+			log "Completed"
+			exit(0)
+		else 
+			log "Failed"
+			exit(1)
+		end
+	else
+		die("Can't execute command: #{cmd}")
+	end
 
-exit(1)
+	exit(1)
+
+ensure
+	File.delete($curpid)
+end

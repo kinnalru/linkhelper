@@ -2,55 +2,70 @@
 
 require 'uri'
 require 'cgi'
-require 'pp'
+require 'common'
 
-def die(text)
-	puts text
-	exit(1)
-	return false
-end
+$curpid="#{ENV["RUNNING"]}.#{$$}"
+File.rename(ENV["RUNNING"], $curpid)
 
-query =ARGV[0]
-pp "Query:#{query}"
-query || die("Query string requeired: ./youtube.rb <query>")
+begin
+	$stdout = File.open(ENV["LOG"], 'a') if ENV["LOG"]
+	$stdout.sync = true
 
-params = CGI::parse(query)
-params.include?('target') || die("Target key required ./youtube.rb target=http://file.txt")
+	$stderr = File.open(ENV["LOG"], 'a') if ENV["LOG"]
+	$stderr.sync = true
 
-target=params['target'].join
-cd = params.include?('cd') ? params['cd'].join : "/tmp/down"
-path = params.include?('path') ? params['path'].join : ""
+	query =ARGV[0]
+	log "Query:#{query}"
+	query || die("Query string requeired: ./youtube.rb <query>")
 
-pp "Target:#{target}"
-pp "Cd:#{cd}"
-pp "Path:#{path}"
+	params = CGI::parse(query)
+	params.include?('target') || die("Target key required ./youtube.rb target=http://file.txt")
 
-`mkdir -p #{cd}`
-Dir.chdir(cd) || dir("Can't create/chdir folder #{cd}")
+	target=params['target'].join
+	cd = params.include?('cd') ? params['cd'].join : "/tmp/down"
+	path = params.include?('path') ? params['path'].join : ""
 
-cmd = "youtube-dl -t #{target} 2>&1"
-pp "Command:#{cmd}"
-out = []
-IO.popen(cmd, "r+") do |pipe|
-	while true do
-		line = pipe.gets
-		break if !line
-		puts line
-		out << line
+	log "Target:#{target}"
+	log "Cd:#{cd}"
+	log "Path:#{path}"
+
+	puts system("mkdir -p #{cd}")
+	Dir.chdir(cd) || dir("Can't create/chdir folder #{cd}")
+
+	cmd = "youtube-dl -c -t #{target} 2>&1"
+	log "Command:#{cmd}"
+	out = []
+	IO.popen(cmd, "r+") do |pipe|
+		while true do
+			line = pipe.gets
+			break if !line
+			puts line
+			out << line
+		end
 	end
-end
 
-result = $?
-if (result.success?) 
-	match = /Destination:(.*)/.match(out.grep(/Destination/).join)
-	match = /\[download\](.*) has already been downloaded/.match(out.grep(/has already been downloaded/).join)
-	file = match[1].strip
-	file || die("Can't obtain result file: #{output}")
-	cmd = "curl https://webdav.yandex.ru/#{path}/ -u USER:PASSWD -X PUT -T \"#{file}\""
-	pp cmd
-	system(cmd) ? exit(0) : exit(1)
-else
-	die("Can't execute command: #{cmd}")
-end
+	result = $?
+	if (result.success?) 
+		match = /Destination:(.*)/.match(out.grep(/Destination/).join)
+		match = /\[download\](.*) has already been downloaded/.match(out.grep(/has already been downloaded/).join) if !match
+		file = match[1].strip
+		file || die("Can't obtain result file: #{output}")
+		log "Result: #{file}"
+		cmd = "curl https://webdav.yandex.ru/#{path}/ -u USER:PASSWD -X PUT -T \"#{file}\""
+		log "Run:#{cmd}"
+		if system(cmd)
+			log "Completed"
+			exit(0)
+		else 
+			log "Failed"
+			exit(1)
+		end
+	else
+		die("Can't execute command: #{cmd}")
+	end
 
-exit(1)
+	exit(1)
+
+ensure
+	File.delete($curpid)
+end
