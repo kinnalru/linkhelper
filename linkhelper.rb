@@ -19,8 +19,8 @@ begin
 	log "Path:#{uri.path}"
 	query = uri.query
 	log "Query:#{uri.query}"
-	if (path == "/favicon.ico" || url.empty? || query.empty?)
-		log "favicon or empty skpped skipped"
+	if (url.empty? || !query || query.empty?)
+		log "empty request skipped"
 		File.delete(ENV["RUNNING"])
 		exit 0
 	end
