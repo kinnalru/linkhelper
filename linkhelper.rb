@@ -5,15 +5,10 @@ require 'cgi'
 require 'pp'
 require 'common'
 
-$stdout = File.open(ENV["LOG"], 'a') if ENV["LOG"]
-$stdout.sync = true
-
-$stderr = File.open(ENV["LOG"], 'a') if ENV["LOG"]
-$stderr.sync = true
+merge_channels()
 
 url = ARGV[0]
 url || die("URL string requeired: linkhelper.rb")
-
 
 log "Processing URL:#{url}"
 uri, path, query = nil
@@ -22,22 +17,22 @@ begin
 	uri = URI(url)
 	path = uri.path
 	log "Path:#{uri.path}"
-	if (path == "/favicon.ico")
-		log "favicon skipped"
+	query = uri.query
+	log "Query:#{uri.query}"
+	if (path == "/favicon.ico" || url.empty? || query.empty?)
+		log "favicon or empty skpped skipped"
 		File.delete(ENV["RUNNING"])
 		exit 0
 	end
-	query = uri.query
-	log "Query:#{uri.query}"
 
-	params = CGI::parse(query)
+	$params = CGI::parse(query)
 rescue => e
 	die("Can't process query #{query} : #{e}")
 end
 
 
-action = params['action']
-target = params['target']
+action = $params['action']
+target = $params['target']
 
 action || die("action required in query")
 target || die("target required in query")
@@ -47,15 +42,16 @@ log "Target:#{target}"
 
 Dir.entries(Dir.pwd).grep("#{action}.rb").empty? && die("There is no such action")
 
-cmd = "./#{action}.rb '#{query}'"
+cmd = "#{Dir.pwd}/#{action}.rb '#{query}'"
 log "Starting #{cmd}"
 
 pid = fork {
-	$stdout = File.open(ENV["LOG"], 'a') if ENV["LOG"]
-	$stdout.sync = true
-
-	$stderr = File.open(ENV["LOG"], 'a') if ENV["LOG"]
-	$stderr.sync = true
+	merge_channels()
+	ENV["RUBYLIB"] = "#{ENV["RUBYLIB"]}:#{Dir.pwd}"
+	cd = $params.include?('cd') ? $params['cd'].join : "/tmp/down"
+	puts system("mkdir -p #{cd}")
+	Dir.chdir(cd) || dir("Can't create/chdir folder #{cd}")
+	log "Exec: #{cmd}"
 	exec(cmd)
 }
 
