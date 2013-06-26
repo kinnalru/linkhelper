@@ -25,14 +25,14 @@ begin
 		exit 0
 	end
 
-	$params = CGI::parse(query)
+	params = CGI::parse(query)
 rescue => e
 	die("Can't process query #{query} : #{e}")
 end
 
 
-action = $params['action']
-target = $params['target']
+action = params['action']
+target = params['target']
 
 action || die("action required in query")
 target || die("target required in query")
@@ -48,7 +48,7 @@ log "Starting #{cmd}"
 pid = fork {
 	merge_channels()
 	ENV["RUBYLIB"] = "#{ENV["RUBYLIB"]}:#{Dir.pwd}"
-	cd = $params.include?('cd') ? $params['cd'].join : "/tmp/down"
+	cd = ENV["DOWNLOADS"] ? ENV["DOWNLOADS"] : "/tmp/down"
 	puts system("mkdir -p #{cd}")
 	Dir.chdir(cd) || dir("Can't create/chdir folder #{cd}")
 	log "Exec: #{cmd}"

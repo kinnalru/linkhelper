@@ -29,7 +29,7 @@ begin
 	log "Target:#{target}"
 	log "Path:#{path}"
 
-	cmd = "wget -c #{target}"
+	cmd = "wget #{target}"
 	out = get_output(cmd)
 
     raise "Can't execute command: #{cmd}" if !out
