@@ -46,7 +46,7 @@ rescue => e
 	die("Can't process query #{query} : #{e}")
 end
 
-params['target'] = Base64.decode64(target64)
+#params['target'] = Base64.decode64(target64)
 
 action = params['action']
 target = params['target']

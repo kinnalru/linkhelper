@@ -27,7 +27,7 @@ begin
 	log "Target:#{target}"
 	log "Path:#{path}"
 
-	cmd = "youtube-dl -c -t #{target}"
+	cmd = "youtube-dl --newline -c -t #{target}"
 	out = get_output(cmd)
 
     raise "Can't execute command: #{cmd}" if !out
