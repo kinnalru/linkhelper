@@ -1,5 +1,6 @@
 #!/usr/bin/ruby
 
+require "base64"
 
 def log(text)
 	puts "[ #{`date '+%Y-%m-%d %H:%M:%S'`.strip} ] #{$0}: #{text}"
@@ -70,4 +71,8 @@ def merge_channels()
 
 	$stdout.sync = true
 	$stderr.sync = true
+end
+
+def make_query(hash) 
+	return hash.to_a.map { |x| "#{x[0]}=#{x[1]}" }.join("&")
 end

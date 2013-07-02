@@ -3,6 +3,7 @@
 require 'uri'
 require 'cgi'
 require 'pp'
+require 'digest/md5'
 require 'common'
 
 merge_channels()
@@ -26,10 +27,26 @@ begin
 	end
 
 	params = CGI::parse(query)
+	target64 = params['target'].join
+	targetmd5 = Digest::MD5.hexdigest(target64)
+	lockfile = "#{ENV["HANDLED"]}/#{targetmd5}"
+
+	if (File.exists?(lockfile))
+		log "request already processed"
+		File.delete(ENV["RUNNING"])
+		log ""
+		log "==== old result ===="
+		log ""
+		File.readlines(lockfile).each do |line| puts line end
+		exit 0
+	else
+		system("ln #{ENV["LOG"]} #{lockfile}")
+	end
 rescue => e
 	die("Can't process query #{query} : #{e}")
 end
 
+params['target'] = Base64.decode64(target64)
 
 action = params['action']
 target = params['target']
@@ -42,7 +59,7 @@ log "Target:#{target}"
 
 Dir.entries(Dir.pwd).grep("#{action}.rb").empty? && die("There is no such action")
 
-cmd = "#{Dir.pwd}/#{action}.rb '#{query}'"
+cmd = "#{Dir.pwd}/#{action}.rb '#{make_query(params)}'"
 log "Starting #{cmd}"
 
 pid = fork {

@@ -6,13 +6,15 @@ require "common"
 work="/tmp/linkhelper"
 history="#{work}/history/"
 running="#{work}/running/"
+handled="#{work}/handled/"
 srv_log="#{work}/server.log"
 downloads="/tmp/down"
 
-port=8383
+port=8081
 
 system("mkdir -p #{history}")
 system("mkdir -p #{running}")
+system("mkdir -p #{handled}")
 system("mkdir -p #{downloads}")
 
 class Tee
@@ -35,9 +37,10 @@ logfile.sync = true
 $stdout = Tee.new(logfile, $stdout)
 $stderr = Tee.new(logfile, $stderr)
 
+ENV["HANDLED"]=handled
 ENV["DOWNLOADS"]=downloads
  
-webserver = TCPServer.new('localhost', port)
+webserver = TCPServer.new('*', port)
 while (session = webserver.accept)
 	sleep 1
 
@@ -60,10 +63,19 @@ while (session = webserver.accept)
 		system("ln #{ENV["LOG"]} #{ENV["RUNNING"]}")
 
 		ret = system("./linkhelper.rb \"#{query}\" 2>&1")
-		code = "500 Internal Server Error" if ret
+		code = "500 Internal Server Error" if ret != true
 
 		log("#{code}: #{ENV["CURHISTORY"]}")
-		resp=`cat '#{ENV["LOG"]}'`.gsub("\n", "<br>")
+		resp="<html>
+		 	<head>
+				<title>Remote uploader</title>
+			</head>
+			<body>
+			    <div class=\"content\" itemprop=\"articleBody\">
+				#{`cat '#{ENV["LOG"]}'`.strip.gsub("\n", "<br>")}
+				</div>
+			</body>
+		</html>"
 		File.delete(ENV["LOG"])
 	end
 	
