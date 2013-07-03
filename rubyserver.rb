@@ -8,7 +8,7 @@ history="#{work}/history/"
 running="#{work}/running/"
 handled="#{work}/handled/"
 srv_log="#{work}/server.log"
-downloads="/tmp/down"
+downloads="/mnt/data/disk2/downloads/link"
 
 port=8081
 
